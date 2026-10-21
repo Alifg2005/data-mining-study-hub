@@ -1,13 +1,23 @@
 import { describe, expect, it } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { chapters, getChapter } from './index';
-import { OPTIONS_PER_QUESTION, QUESTIONS_PER_CHAPTER, validateChapter, validateChapterRegistry } from '../../lib/validate-chapter';
+import { sourceManifest } from '../source-manifest';
+import {
+  OPTIONS_PER_QUESTION,
+  QUESTIONS_PER_CHAPTER,
+  validateChapter,
+  validateChapterRegistry,
+} from '../../lib/validate-chapter';
+import { validateChapterSources } from '../../lib/validate-sources';
 
 /**
  * Content validation for every registered chapter. Runs in `npm run build`, so
  * malformed chapter data fails the build (and the Vercel deployment).
  *
- * The source PDFs are private and not committed, so these tests check source
- * metadata only. `npm run verify:sources` checks that the files exist locally.
+ * The source documents are private and not committed, so these tests check source
+ * metadata against src/data/source-manifest.ts only. `npm run verify:sources` checks
+ * that the files exist locally.
  */
 describe('chapter registry', () => {
   it('has no registry-level problems', () => {
@@ -24,11 +34,51 @@ describe('chapter registry', () => {
     expect(getChapter('chapter-99')).toBeUndefined();
     expect(getChapter(undefined)).toBeUndefined();
   });
+
+  it('has a source manifest entry for exactly the registered chapters', () => {
+    expect(Object.keys(sourceManifest).sort()).toEqual(chapters.map((c) => c.id).sort());
+  });
+});
+
+describe('source privacy', () => {
+  it('keeps private source paths and their modules out of application code', () => {
+    // Test-only modules that may contain repository paths.
+    const privateModules = ['source-manifest.ts', 'validate-sources.ts'];
+    const srcDir = resolve(process.cwd(), 'src');
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) walk(full);
+        else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) && !privateModules.includes(name)) files.push(full);
+      }
+    };
+    walk(srcDir);
+    expect(files.length).toBeGreaterThan(10);
+    const importsPrivate = /from\s+['"][^'"]*(source-manifest|validate-sources)['"]/;
+    const offenders = files.filter((f) => {
+      const code = readFileSync(f, 'utf8');
+      return /source_materials/.test(code) || importsPrivate.test(code);
+    });
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe.each(chapters.map((c) => [c.id, c] as const))('%s', (_id, chapter) => {
   it('passes validation', () => {
     expect(validateChapter(chapter)).toEqual([]);
+  });
+
+  it('cites only verified pages, slides and sections of its manifest sources', () => {
+    expect(validateChapterSources(chapter, sourceManifest[chapter.id])).toEqual([]);
+  });
+
+  it('has at least one source reference', () => {
+    const refs = [
+      ...chapter.reviewSections.filter((s) => s.source),
+      ...chapter.questions.filter((q) => q.sourceReference),
+    ];
+    expect(refs.length).toBeGreaterThan(0);
   });
 
   it(`has exactly ${QUESTIONS_PER_CHAPTER} questions with ${OPTIONS_PER_QUESTION} options each`, () => {
@@ -37,18 +87,6 @@ describe.each(chapters.map((c) => [c.id, c] as const))('%s', (_id, chapter) => {
       expect(q.options).toHaveLength(OPTIONS_PER_QUESTION);
       expect(q.options.filter((o) => o.id === q.correctOptionId)).toHaveLength(1);
     }
-  });
-
-  it('has well-formed source metadata', () => {
-    expect(chapter.source.path.startsWith(`source_materials/${chapter.id}/`)).toBe(true);
-    expect(chapter.source.path).toMatch(/^source_materials\/chapter-\d{2}\/[^/\\]+\.[a-z]+$/i);
-    expect(Number.isInteger(chapter.source.pageCount) && chapter.source.pageCount > 0).toBe(true);
-    const pages = [
-      ...chapter.reviewSections.flatMap((s) => (s.source ? [s.source.page] : [])),
-      ...chapter.questions.flatMap((q) => (q.sourceReference ? [q.sourceReference.page] : [])),
-    ];
-    expect(pages.length).toBeGreaterThan(0);
-    for (const page of pages) expect(page).toBeLessThanOrEqual(chapter.source.pageCount);
   });
 
   it('uses question ids prefixed with the chapter number', () => {

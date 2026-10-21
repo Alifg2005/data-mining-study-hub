@@ -2,7 +2,7 @@ import type { Chapter } from '../../types/content';
 
 /**
  * Chapter 1: Introduction to Data Mining
- * Source: source_materials/chapter-01/Ch 1_Note.pdf (5 pages)
+ * Source: Chapter 1 lecture notes PDF, 5 pages (file path in src/data/source-manifest.ts)
  *   p.1  What is Data Mining?, The KDD Process, Data Mining Tasks
  *   p.2  Diversity of Data Types, Interdisciplinary Nature & Society, Summary
  *   p.3  Most famous data mining Functions (list + taxonomy diagram)
@@ -15,7 +15,7 @@ export const chapter01: Chapter = {
   title: 'Introduction to Data Mining',
   description:
     'What data mining is, the KDD process, descriptive vs. predictive tasks, and the core functions of classification and clustering.',
-  source: { path: 'source_materials/chapter-01/Ch 1_Note.pdf', pageCount: 5 },
+  sources: [{ id: 'notes', title: 'Notes', unit: 'page' }],
 
   learningObjectives: [
     'Define data mining and recognize its alternative names, including KDD.',

@@ -4,6 +4,7 @@ import type { Chapter } from '../../types/content';
 import { resultBand, type QuestionOutcome, type QuestionResult, type QuizResult } from '../../lib/quiz';
 import { cn } from '../../lib/cn';
 import { reviewPath } from '../../lib/routes';
+import { formatSourceCitation } from '../../lib/sources';
 import { Button, ButtonLink } from '../ui/Button';
 import { optionLetter } from './QuestionCard';
 import { ScoreRing } from './ScoreRing';
@@ -16,7 +17,7 @@ const outcomeStyles: Record<QuestionOutcome, { label: string; icon: typeof Check
   unanswered: { label: 'Not answered', icon: CircleDashed, className: 'bg-warning-soft text-warning' },
 };
 
-function ResultItem({ item, index }: { item: QuestionResult; index: number }) {
+function ResultItem({ chapter, item, index }: { chapter: Chapter; item: QuestionResult; index: number }) {
   const { question, selectedOptionId, outcome } = item;
   const style = outcomeStyles[outcome];
   const Icon = style.icon;
@@ -72,7 +73,7 @@ function ResultItem({ item, index }: { item: QuestionResult; index: number }) {
         </p>
         {question.sourceReference && (
           <p className="mt-2 font-mono text-xs text-subtle">
-            Notes, p. {question.sourceReference.page}: {question.sourceReference.section}
+            {formatSourceCitation(chapter, question.sourceReference)}
           </p>
         )}
       </div>
@@ -183,7 +184,7 @@ export function QuizResults({ chapter, result, onRetry, headingRef }: QuizResult
         ) : (
           <ol className="space-y-4">
             {visible.map(({ item, index }) => (
-              <ResultItem key={item.question.id} item={item} index={index} />
+              <ResultItem key={item.question.id} chapter={chapter} item={item} index={index} />
             ))}
           </ol>
         )}

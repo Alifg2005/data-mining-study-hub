@@ -2,7 +2,7 @@ import type { Chapter } from '../../types/content';
 
 /**
  * Chapter 2: Getting to Know Your Data
- * Source: source_materials/chapter-02/Ch 2_Note.pdf (4 pages)
+ * Source: Chapter 2 lecture notes PDF, 4 pages (file path in src/data/source-manifest.ts)
  *   p.1  1. Data Types (type/subtype table, Interval, attribute tree)
  *   p.2  2. Attributes & Variables (measurement table, symmetric/asymmetric, mini-dataset, class activity)
  *   p.3  3. Statistical Measures for Data Analysis
@@ -14,7 +14,7 @@ export const chapter02: Chapter = {
   title: 'Getting to Know Your Data',
   description:
     'Attribute types and measurement scales, descriptive statistics for understanding data, and how the major data mining tasks differ.',
-  source: { path: 'source_materials/chapter-02/Ch 2_Note.pdf', pageCount: 4 },
+  sources: [{ id: 'notes', title: 'Notes', unit: 'page' }],
 
   learningObjectives: [
     'Classify attributes as numerical (discrete, continuous) or categorical (nominal, binary, ordinal).',

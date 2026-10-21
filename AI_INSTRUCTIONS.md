@@ -20,7 +20,22 @@ This is the permanent operating guide for AI coding agents working in this repos
 - Home page listing every registered chapter, with student, instructor, and course details from config.
 - Reusable chapter review page with a section table of contents (sticky on desktop, collapsible on mobile).
 - Reusable quiz: one question at a time, progress bar, previous/next, a question overview grid, the ability to change answers, and confirmation before submitting with unanswered questions.
-- Results: score ring, score out of 20, percentage, correct/incorrect/unanswered counts, a per-question review with the student's answer, the correct answer, the explanation, and the source page, a "To review" filter, and retry.
+- Results: score ring, score out of 20, percentage, correct/incorrect/unanswered counts, a per-question review with the student's answer, the correct answer, the explanation, and a readable source citation (e.g., "Lecture slides, slide 18"), a "To review" filter, and retry.
+- Chapters with several source documents, cited by page, slide, or section heading.
+
+### Chapter numbering
+
+The site numbers chapters by the **lecture order** of the instructor's course outline:
+
+| Site chapter | Title | Course lecture |
+| --- | --- | --- |
+| 1 | Introduction to Data Mining | Lecture 1 |
+| 2 | Getting to Know Your Data | (data types and statistics; site chapter kept from the first release) |
+| 3 | Data Preprocessing | Lecture 3 |
+| 4 | Data Warehousing and OLAP | Lecture 4 |
+| 5 | Frequent Pattern Mining | Lecture 5 |
+
+The same outline also uses a **different, textbook-style numbering** (for example, its "Chapter 2" includes data preprocessing and its "Chapter 3" is Data Warehousing). The two schemes are not the same; do not renumber source documents or site chapters to match the textbook scheme. Lecture 2 (similarity and dissimilarity), Lecture 6 (classification algorithms), Lecture 7 (clustering algorithms) and outlier detection have **no usable source material yet**: do not create those chapters until the instructor's notes are supplied.
 - Light and dark themes: system preference on first visit, saved choice afterwards, no flash on load.
 - Graceful not-found states for unknown chapters and routes.
 - Development-time and build-time validation of all chapter data.
@@ -31,14 +46,18 @@ This is the permanent operating guide for AI coding agents working in this repos
 src/
 ├── config/site.ts              # Student, instructor, course, project name. The ONLY place for these values.
 ├── types/content.ts            # Content schema: Chapter, ReviewSection, ContentBlock, QuizQuestion
-├── data/chapters/
-│   ├── chapter-01.ts           # Chapter content (data only, no JSX)
-│   ├── chapter-02.ts
-│   ├── index.ts                # Chapter REGISTRY. Append new chapters here.
-│   └── chapters.test.ts        # Validates every registered chapter (runs during `npm run build`)
+├── data/
+│   ├── source-manifest.ts      # TEST-ONLY: private source file paths and page/slide counts. Never import in app code.
+│   └── chapters/
+│       ├── chapter-01.ts … chapter-05.ts   # Chapter content (data only, no JSX)
+│       ├── index.ts            # Chapter REGISTRY. Append new chapters here.
+│       ├── chapters.test.ts    # Validates every chapter and its sources (runs during `npm run build`)
+│       └── sources.local.test.ts  # LOCAL-ONLY: source files exist (`npm run verify:sources`)
 ├── lib/
 │   ├── quiz.ts                 # Pure scoring engine
-│   ├── validate-chapter.ts     # Content rules (20 questions, 4 options, ...)
+│   ├── validate-chapter.ts     # Content rules (20 questions, 4 options, source references, ...)
+│   ├── validate-sources.ts     # TEST-ONLY: checks references against the source manifest
+│   ├── sources.ts              # Resolves and formats readable source citations
 │   ├── theme.ts, routes.ts, cn.ts
 ├── hooks/                      # useQuiz (reducer), useTheme, useActiveSection, useDocumentTitle
 ├── components/
@@ -51,7 +70,8 @@ src/
 ├── styles/index.css            # Design tokens (CSS variables) for both themes
 ├── App.tsx                     # Routes
 └── main.tsx
-source_materials/chapter-XX/    # Original lecture notes. PRIVATE: gitignored, never committed or shipped.
+scripts/check-bundle-privacy.mjs  # Runs after `vite build`; fails if dist/ contains source paths or documents
+source_materials/               # Original lecture notes and private analysis reports. PRIVATE: gitignored, never committed or shipped.
 ```
 
 Routes: `/`, `/chapters/:chapterId` (review), `/chapters/:chapterId/quiz`. All chapters share the same pages; the data decides what is shown.
@@ -82,7 +102,7 @@ Quiz scoring: results are computed by `scoreQuiz()` from `correctOptionId` in th
 
 Read [CONTENT_GUIDELINES.md](CONTENT_GUIDELINES.md) in full. In summary:
 
-1. **Locate** the new notes (normally `source_materials/chapter-XX/`). If they were supplied elsewhere, copy them into `source_materials/chapter-XX/` and keep the original filename.
+1. **Locate** the new notes (inside `source_materials/`, usually a topic folder such as `source_materials/pattern-mining/`). If they were supplied elsewhere, copy them into `source_materials/` and keep the original filename. Read `source_materials/SOURCE_ANALYSIS_ALL_COURSE.md` (private) for known source errors and conflicts.
 2. **Read** the entire document, including diagrams, tables, colored or highlighted text, and images. For PDFs, extract the text (for example with `pdftotext -layout`) and also view the pages, because text extraction scrambles tables and loses diagrams.
 3. **Verify** that the content was read successfully. If any part is unreadable, do not invent it. Report it.
 4. **Transform** the notes into structured review sections using the existing block types, and write exactly 20 questions that follow the quality rules.
@@ -97,20 +117,24 @@ For chapter number N (zero-padded to two digits as XX):
 
 | Step | File | Action |
 | --- | --- | --- |
-| 1 | `source_materials/chapter-XX/<original filename>` | Place the source notes here. |
-| 2 | `src/data/chapters/chapter-XX.ts` | **Create.** Export `const chapterXX: Chapter`. Copy the structure of `chapter-02.ts`. |
+| 1 | `source_materials/<folder>/<original filename>` | Place the source notes here (private, gitignored). |
+| 2 | `src/data/chapters/chapter-XX.ts` | **Create.** Export `const chapterXX: Chapter`. Copy the structure of `chapter-05.ts` (several sources) or `chapter-03.ts` (one slide deck). |
 | 3 | `src/data/chapters/index.ts` | **Update.** Import `chapterXX` and append it to the `chapters` array. |
+| 4 | `src/data/source-manifest.ts` | **Update.** Add `'chapter-XX': { <sourceId>: { path, count } }` (or `sections` for Word documents). |
 
 That is all. The home page, routes, review page, and quiz pick the chapter up automatically.
 
 Required values in the chapter file:
 
 - `id: 'chapter-XX'`, `number: N` (the validator enforces that they match).
-- `source: { path: 'source_materials/chapter-XX/<file>', pageCount: <real page count> }`. The validator checks the path format (inside `source_materials/chapter-XX/`, one file, extension pdf/ppt/pptx/doc/docx/md/txt) and that every page reference is within `pageCount`. It does **not** require the file to exist, because the notes are private and absent on GitHub and Vercel.
-
-**Source privacy:** `source_materials/` is gitignored. Never commit, upload, copy into `public/`, or otherwise expose the lecture notes. Never remove `/source_materials/` from `.gitignore`. Never make the public build depend on those files.
-- A header comment listing which topics are on which source page, as in the existing chapters.
+- `sources: [{ id, title, unit }]`: one entry per source document. `title` is a **readable name shown to students** (never a filename or path). `unit` is `'page'` (PDF), `'slide'` (PowerPoint) or `'section'` (Word documents without fixed pages).
+- Source references: `{ sourceId, page | slide, section }`. `sourceId` may be omitted only when the chapter has one source. Page sources need `page`, slide sources need `slide`, and section sources need neither; `section` must then be one of the verified headings listed in the manifest.
+- A header comment listing which topics are on which page/slide, as in the existing chapters.
 - Question ids `chXX-q01` … `chXX-q20`.
+
+Required manifest values (`src/data/source-manifest.ts`): `path` inside `source_materials/` with a pdf/ppt/pptx/doc/docx/md/txt extension; `count` = real number of pages or slides; for section sources, `sections` = the exact headings verified in the document. Tests check every reference against these values without needing the files.
+
+**Source privacy:** `source_materials/` is gitignored. Never commit, upload, copy into `public/`, or otherwise expose the lecture notes. Never remove `/source_materials/` from `.gitignore`. Never make the public build depend on those files. Never import `source-manifest.ts` or `validate-sources.ts` from application code: a test fails if you do, and `scripts/check-bundle-privacy.mjs` fails the build if any `source_materials` path or document reaches `dist/`.
 
 ---
 

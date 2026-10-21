@@ -9,6 +9,7 @@ import { useActiveSection } from '../hooks/useActiveSection';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { cn } from '../lib/cn';
 import { chapterLabel, quizPath } from '../lib/routes';
+import { formatSourceLocation } from '../lib/sources';
 import { NotFoundPage } from './NotFoundPage';
 
 export function ChapterReviewPage() {
@@ -116,7 +117,9 @@ function ChapterReview({ chapter }: { chapter: Chapter }) {
                   </span>
                   {section.title}
                 </h2>
-                {section.source && <p className="font-mono text-xs text-subtle">Notes, p. {section.source.page}</p>}
+                {section.source && (
+                  <p className="font-mono text-xs text-subtle">{formatSourceLocation(chapter, section.source)}</p>
+                )}
               </div>
               <div className="space-y-5">
                 {section.blocks.map((block, i) => (

@@ -1,4 +1,5 @@
 import type { Chapter, ContentBlock, SourceReference } from '../types/content';
+import { resolveSource } from './sources';
 
 export const QUESTIONS_PER_CHAPTER = 20;
 export const OPTIONS_PER_QUESTION = 4;
@@ -6,38 +7,38 @@ export const OPTIONS_PER_QUESTION = 4;
 export const MAX_CORRECT_AT_SAME_POSITION = 8;
 
 const CHAPTER_ID_PATTERN = /^chapter-\d{2}$/;
-/** Lecture-note formats accepted as chapter sources. */
-export const SOURCE_EXTENSIONS = ['pdf', 'ppt', 'pptx', 'doc', 'docx', 'md', 'txt'] as const;
-const SOURCE_FILE_PATTERN = new RegExp(`^[^/\\\\]+\\.(${SOURCE_EXTENSIONS.join('|')})$`, 'i');
-
-/**
- * Checks the format of source.path only. The files themselves are private and are not
- * committed (see .gitignore); `npm run verify:sources` checks they exist locally.
- */
-function checkSourcePath(chapterId: string, path: string, errors: string[], at: (s: string) => string) {
-  const folder = `source_materials/${chapterId}/`;
-  if (!path.startsWith(folder)) {
-    errors.push(at(`source.path must be inside "${folder}".`));
-    return;
-  }
-  if (!SOURCE_FILE_PATTERN.test(path.slice(folder.length)))
-    errors.push(at(`source.path must name one file directly in "${folder}" with a ${SOURCE_EXTENSIONS.join('/')} extension.`));
-}
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SOURCE_UNITS = ['page', 'slide', 'section'] as const;
 
 const isBlank = (value: string | undefined): boolean => value === undefined || value.trim().length === 0;
 const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
+const isPositiveInt = (value: number | undefined): value is number => Number.isInteger(value) && (value ?? 0) >= 1;
 
 export function expectedChapterId(number: number): string {
   return `chapter-${String(number).padStart(2, '0')}`;
 }
 
-function checkReference(ref: SourceReference | undefined, pageCount: number, where: string, errors: string[]) {
+/** Structural reference checks that need only the chapter data (no private manifest). */
+function checkReference(chapter: Chapter, ref: SourceReference | undefined, where: string, errors: string[]) {
   if (!ref) return;
-  if (!Number.isInteger(ref.page) || ref.page < 1 || ref.page > pageCount) {
-    errors.push(`${where}: source page ${ref.page} is outside the source document (1-${pageCount}).`);
-  }
   if (isBlank(ref.section)) errors.push(`${where}: source reference needs a section name.`);
+  const source = resolveSource(chapter, ref);
+  if (!source) {
+    errors.push(
+      ref.sourceId === undefined
+        ? `${where}: source reference needs a sourceId because the chapter has several sources.`
+        : `${where}: unknown sourceId "${ref.sourceId}".`,
+    );
+    return;
+  }
+  const hasPage = ref.page !== undefined;
+  const hasSlide = ref.slide !== undefined;
+  if (source.unit === 'page' && (!isPositiveInt(ref.page) || hasSlide))
+    errors.push(`${where}: "${source.id}" is cited by page; give a positive page number and no slide.`);
+  if (source.unit === 'slide' && (!isPositiveInt(ref.slide) || hasPage))
+    errors.push(`${where}: "${source.id}" is cited by slide; give a positive slide number and no page.`);
+  if (source.unit === 'section' && (hasPage || hasSlide))
+    errors.push(`${where}: "${source.id}" is cited by section only; remove the page/slide number.`);
 }
 
 function checkBlock(block: ContentBlock, where: string, errors: string[]) {
@@ -89,10 +90,18 @@ export function validateChapter(chapter: Chapter): string[] {
     errors.push(at(`id must be "${expectedChapterId(chapter.number)}" for chapter number ${chapter.number}.`));
   if (isBlank(chapter.title)) errors.push(at('title is empty.'));
   if (isBlank(chapter.description)) errors.push(at('description is empty.'));
-  if (isBlank(chapter.source.path)) errors.push(at('source.path is empty.'));
-  else checkSourcePath(chapter.id, chapter.source.path, errors, at);
-  if (!Number.isInteger(chapter.source.pageCount) || chapter.source.pageCount < 1)
-    errors.push(at('source.pageCount must be a positive integer.'));
+
+  // Sources (readable metadata only; paths and counts are checked by validateChapterSources)
+  if (chapter.sources.length === 0) errors.push(at('needs at least one source.'));
+  const sourceIds = new Set<string>();
+  for (const source of chapter.sources) {
+    if (!SLUG_PATTERN.test(source.id)) errors.push(at(`source id "${source.id}" must be a lowercase slug.`));
+    if (sourceIds.has(source.id)) errors.push(at(`duplicate source id "${source.id}".`));
+    sourceIds.add(source.id);
+    if (isBlank(source.title)) errors.push(at(`source "${source.id}" needs a readable title.`));
+    if (!SOURCE_UNITS.includes(source.unit)) errors.push(at(`source "${source.id}" has an invalid unit.`));
+  }
+
   if (chapter.learningObjectives.length === 0 || chapter.learningObjectives.some(isBlank))
     errors.push(at('needs non-empty learning objectives.'));
   if (chapter.keyTakeaways.length === 0 || chapter.keyTakeaways.some(isBlank))
@@ -109,7 +118,7 @@ export function validateChapter(chapter: Chapter): string[] {
     if (isBlank(section.title)) errors.push(`${where}: title is empty.`);
     if (section.blocks.length === 0) errors.push(`${where}: has no content blocks.`);
     section.blocks.forEach((block, j) => checkBlock(block, `${where} block ${j + 1}`, errors));
-    checkReference(section.source, chapter.source.pageCount, where, errors);
+    checkReference(chapter, section.source, where, errors);
   });
 
   // Questions
@@ -149,7 +158,7 @@ export function validateChapter(chapter: Chapter): string[] {
       positionCounts.set(position, (positionCounts.get(position) ?? 0) + 1);
     }
 
-    checkReference(q.sourceReference, chapter.source.pageCount, where, errors);
+    checkReference(chapter, q.sourceReference, where, errors);
   });
 
   for (const [position, count] of positionCounts) {

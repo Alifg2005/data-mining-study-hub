@@ -29,7 +29,9 @@ Rules for writing chapter review content and quiz questions. They apply to every
 | `callout` | `note` (emphasis from the notes), `tip` (exam advice), `caution` (inconsistencies, pitfalls), `supplemental` (not in the notes). |
 | `tree` | Taxonomy diagrams. |
 
-- Add `source: { page, section }` to a section only when the page is certain. Pages are 1-based PDF pages.
+- Add a `source` reference to a section only when the location is certain: `{ sourceId, page, section }` for PDFs (1-based pages), `{ sourceId, slide, section }` for slide decks, or `{ sourceId, section }` for Word documents (the section must be a verified heading listed in `src/data/source-manifest.ts`). `sourceId` may be omitted when the chapter has a single source.
+- Source titles in `sources` are shown to students: use readable names ("Lecture slides", "FP-growth notes"), never filenames or paths.
+- If a source contains an error (for example, a count that does not match its own data), do not silently correct it in student-facing content. Show only verified values, add a neutral `caution` callout when the discrepancy matters for understanding, keep it out of the quiz, and record it in the private `source_materials/SOURCE_ANALYSIS_ALL_COURSE.md`.
 - Be concise: exam-focused, no repetition, no padding.
 - `learningObjectives` should start with a verb ("Define…", "Distinguish…"). `keyTakeaways` should hold 4 to 7 one-sentence points.
 - Writing style: plain sentences, no em-dashes, no marketing tone.
@@ -41,7 +43,7 @@ Every chapter has **exactly 20** questions. Each question has:
 - **4 options** with ids `a`, `b`, `c`, `d`, unique text, and **exactly one** correct answer referenced by `correctOptionId` (an id, never an index).
 - An `explanation` that teaches **why** the answer is right and, where useful, why a tempting distractor is wrong. Do not just repeat the answer.
 - A `difficulty` (`easy`, `medium`, or `hard`).
-- A `sourceReference` when the page is certain.
+- A `sourceReference` when the page, slide, or section is certain.
 - An id of the form `chXX-qNN` (e.g. `ch03-q07`).
 
 Quality rules:

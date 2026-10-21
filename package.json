@@ -6,13 +6,13 @@
   "description": "Review notes and chapter quizzes for the CIS 517 Data Mining course.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && npm run validate:content && vite build",
+    "build": "tsc -b && npm run validate:content && vite build && node scripts/check-bundle-privacy.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run lint && npm run typecheck && npm run test && vite build",
+    "check": "npm run lint && npm run typecheck && npm run test && vite build && node scripts/check-bundle-privacy.mjs",
     "validate:content": "vitest run src/data",
     "verify:sources": "vitest run --config vitest.sources.config.ts"
   },

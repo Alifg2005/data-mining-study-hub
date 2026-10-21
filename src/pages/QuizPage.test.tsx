@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { AppRoutes } from '../App';
 import { chapters } from '../data/chapters';
@@ -123,5 +123,36 @@ describe('quiz flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit anyway' }));
     expect(screen.getByRole('img', { name: 'Score: 5 percent' })).toBeTruthy();
     expect(screen.getAllByText('Not answered').length).toBeGreaterThan(0);
+  });
+});
+
+describe('every registered chapter', () => {
+  const exactly = (title: string) => new RegExp('^' + title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$');
+
+  it.each(chapters.map((c) => [c.id, c] as const))('%s has a working review page and quiz', (_id, c) => {
+    renderAt(`/chapters/${c.id}`);
+    expect(screen.getByRole('heading', { level: 1, name: c.title })).toBeTruthy();
+    for (const section of c.reviewSections) {
+      expect(screen.getByRole('heading', { level: 2, name: exactly(section.title) })).toBeTruthy();
+    }
+    cleanup();
+    renderAt(`/chapters/${c.id}/quiz`);
+    expect(screen.getByRole('heading', { name: `Question 1 of ${c.questions.length}` })).toBeTruthy();
+  });
+
+  it('shows readable multi-source citations without file names in quiz results', () => {
+    const c = chapters.find((ch) => ch.sources.length > 1)!;
+    renderAt(`/chapters/${c.id}/quiz`);
+    c.questions.forEach((q, i) => {
+      fireEvent.click(screen.getByRole('radio', { name: q.options.find((o) => o.id === q.correctOptionId)!.text }));
+      if (i < c.questions.length - 1) fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: /Submit quiz/ })[0]!);
+    expect(screen.getByRole('img', { name: 'Score: 100 percent' })).toBeTruthy();
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/source_materials|\.pdf|\.docx|\.pptx/i);
+    const first = c.questions[0]!.sourceReference!;
+    const title = c.sources.find((s) => s.id === first.sourceId)!.title;
+    expect(text).toContain(title);
   });
 });

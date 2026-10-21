@@ -11,11 +11,33 @@
 
 export type RichText = string;
 
-/** A location in the chapter's original source document. Only add one when the page is known. */
+/** How locations in a source document are cited. Word documents without fixed pages use `section`. */
+export type SourceUnit = 'page' | 'slide' | 'section';
+
+/**
+ * A source document of a chapter, as shown to students. It holds a readable title only:
+ * file paths and page counts live in src/data/source-manifest.ts, which is never bundled.
+ */
+export type ChapterSource = {
+  /** Lowercase slug, unique within the chapter. */
+  id: string;
+  /** Readable title shown on the site, e.g. "Notes" or "Lecture slides". */
+  title: string;
+  unit: SourceUnit;
+};
+
+/**
+ * A verified location in one of the chapter's sources. Only add one when the location is certain.
+ * Exactly one of `page` / `slide` is set for page and slide sources; neither for section sources.
+ */
 export type SourceReference = {
-  /** 1-based page number in the source PDF. */
-  page: number;
-  /** Section heading as it appears in the notes. */
+  /** Id of a ChapterSource. May be omitted only when the chapter has a single source. */
+  sourceId?: string;
+  /** 1-based page number (sources with unit "page"). */
+  page?: number;
+  /** 1-based slide number (sources with unit "slide"). */
+  slide?: number;
+  /** Section heading as it appears in the source. For "section" sources it must be a verified heading. */
   section: string;
 };
 
@@ -80,19 +102,14 @@ export type QuizQuestion = {
   sourceReference?: SourceReference;
 };
 
-export type SourceDocument = {
-  /** Path relative to the repository root. Not shipped with the site. */
-  path: string;
-  pageCount: number;
-};
-
 export type Chapter = {
   /** Format "chapter-XX". Stable: used in URLs. */
   id: string;
   number: number;
   title: string;
   description: string;
-  source: SourceDocument;
+  /** Source documents, by readable title. Each needs a matching entry in src/data/source-manifest.ts. */
+  sources: ChapterSource[];
   learningObjectives: string[];
   reviewSections: ReviewSection[];
   keyTakeaways: string[];

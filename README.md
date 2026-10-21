@@ -5,7 +5,9 @@ Review notes and practice quizzes for **CIS 517 Data Mining** (instructor: Dr. T
 Each chapter has:
 
 - a concise **review** built from the lecture notes, and
-- a **20-question multiple-choice quiz** with a score, explanations, and source page references shown after submission.
+- a **20-question multiple-choice quiz** with a score, explanations, and source references (page, slide, or section) shown after submission.
+
+Chapters: 1 Introduction to Data Mining, 2 Getting to Know Your Data, 3 Data Preprocessing, 4 Data Warehousing and OLAP, 5 Frequent Pattern Mining. Chapters follow the **lecture order** of the instructor's course outline; that outline also uses a different, textbook-style chapter numbering (for example, it calls Data Warehousing "Chapter 3"), so the two numbering schemes do not match.
 
 The site is fully static. It needs no backend, no database, no environment variables, and no runtime AI or API.
 
@@ -25,7 +27,7 @@ npm run dev        # http://localhost:5173
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Development server |
-| `npm run build` | Typecheck, validate chapter content, and build to `dist/` |
+| `npm run build` | Typecheck, validate chapter content, build to `dist/`, and check the bundle contains no private source paths |
 | `npm run preview` | Serve the production build locally |
 | `npm test` | Run all tests |
 | `npm run lint` | ESLint |
@@ -38,6 +40,7 @@ npm run dev        # http://localhost:5173
 ```text
 src/config/site.ts          Student, instructor, course details (edit here only)
 src/data/chapters/          Chapter content files + the chapter registry (index.ts)
+src/data/source-manifest.ts Test-only: private source file paths and page/slide counts (never bundled)
 src/types/content.ts        Content schema
 src/lib/                    Quiz scoring engine, content validation, theme helpers
 src/components/, src/pages/ Reusable UI; one review page and one quiz page serve all chapters
@@ -55,13 +58,13 @@ CONTENT_GUIDELINES.md       Rules for review content and quiz questions
 
 ## Adding a chapter
 
-Chapters are added by an AI coding agent that reads the new lecture notes and edits the repository directly. Put the notes in the repository (for example `source_materials/chapter-03/`), then give the agent this instruction:
+Chapters are added by an AI coding agent that reads the new lecture notes and edits the repository directly. Put the notes in the private `source_materials/` folder (for example `source_materials/clustering/`), then give the agent this instruction:
 
-> Read and follow AI_INSTRUCTIONS.md completely. Process the new lecture notes located at `source_materials/chapter-03/`. Analyze the notes, generate the chapter review and exactly 20 validated multiple-choice questions, create the required chapter data file, register the chapter in the application, preserve all existing chapters and functionality, validate the content, run the available checks and production build, fix any issues caused by your changes, and report the final results. Do not stop for intermediate approval.
+> Read and follow AI_INSTRUCTIONS.md completely. Process the new lecture notes located at `source_materials/clustering/`. Analyze the notes, generate the chapter review and exactly 20 validated multiple-choice questions, create the required chapter data file, register the chapter in the application, preserve all existing chapters and functionality, validate the content, run the available checks and production build, fix any issues caused by your changes, and report the final results. Do not stop for intermediate approval.
 
-Manually, adding a chapter means creating `src/data/chapters/chapter-XX.ts` and appending it to `src/data/chapters/index.ts`. No other files change. See [AI_INSTRUCTIONS.md](AI_INSTRUCTIONS.md).
+Manually, adding a chapter means creating `src/data/chapters/chapter-XX.ts`, appending it to `src/data/chapters/index.ts`, and adding its source files to `src/data/source-manifest.ts`. No other files change. See [AI_INSTRUCTIONS.md](AI_INSTRUCTIONS.md).
 
-Content is validated automatically: exactly 20 questions, 4 unique options, exactly one valid correct answer, unique ids, valid page references, and no answer-position bias. A malformed chapter fails `npm test` and `npm run build`, so it cannot be deployed.
+Content is validated automatically: exactly 20 questions, 4 unique options, exactly one valid correct answer, unique ids, source references that point to a verified page, slide, or section of a listed source, and no answer-position bias. A malformed chapter fails `npm test` and `npm run build`, so it cannot be deployed.
 
 ## Deployment
 
@@ -93,7 +96,8 @@ git push -u origin main
 
 The original lecture notes belong to the instructor, so they are kept **locally only**. `source_materials/` is listed in `.gitignore`, so the files are not pushed to GitHub, not in `public/`, and not part of the deployed site.
 
-- `npm test`, `npm run build`, and `npm run check` do **not** need the source files. They validate each chapter's `source` metadata instead: the path format (`source_materials/chapter-XX/<file>.<pdf|pptx|docx|...>`), the page count, and that every page reference falls within it. This is what runs on Vercel.
+- `npm test`, `npm run build`, and `npm run check` do **not** need the source files. They validate each chapter's sources against `src/data/source-manifest.ts` instead: the path format (`source_materials/<folder>/<file>.<pdf|pptx|docx|...>`), the page or slide count, the verified section headings, and that every reference falls within them. This is what runs on Vercel.
+- The production bundle contains only readable source titles and page/slide numbers. `scripts/check-bundle-privacy.mjs` runs after every build and fails it if any `source_materials` path or document file reaches `dist/`.
 - `npm run verify:sources` is an optional **local-only** check that the referenced files actually exist on your machine. Run it after adding a chapter. It fails if the private files are missing, so it is not part of the build.
 
 ## Accessibility and theming
