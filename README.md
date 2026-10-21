@@ -31,6 +31,7 @@ npm run dev        # http://localhost:5173
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript checks |
 | `npm run check` | Lint, typecheck, test, and build |
+| `npm run verify:sources` | Local only: confirm the private source notes exist in `source_materials/` |
 
 ## Project structure
 
@@ -40,7 +41,7 @@ src/data/chapters/          Chapter content files + the chapter registry (index.
 src/types/content.ts        Content schema
 src/lib/                    Quiz scoring engine, content validation, theme helpers
 src/components/, src/pages/ Reusable UI; one review page and one quiz page serve all chapters
-source_materials/           Original lecture notes (not included in the deployed site)
+source_materials/           Original lecture notes (local only: gitignored, never deployed)
 AI_INSTRUCTIONS.md          Operating guide for AI agents, including adding chapters
 CONTENT_GUIDELINES.md       Rules for review content and quiz questions
 ```
@@ -90,12 +91,10 @@ git push -u origin main
 
 ## About `source_materials/`
 
-The original lecture PDFs are kept in `source_materials/` so the content can be regenerated and verified. They are **not** in `public/` and are **not** part of the deployed site.
+The original lecture notes belong to the instructor, so they are kept **locally only**. `source_materials/` is listed in `.gitignore`, so the files are not pushed to GitHub, not in `public/`, and not part of the deployed site.
 
-If the GitHub repository is **public**, anyone can download these PDFs from GitHub. The lecture notes belong to the instructor. Before making the repository public, either:
-
-- keep the repository **private** (Vercel deploys private repositories normally), or
-- add `source_materials/` to `.gitignore` and keep the notes locally. The chapter data files still build without them, but the test that checks each chapter's source file exists will then fail. Remove that test, or keep the files available locally when running checks.
+- `npm test`, `npm run build`, and `npm run check` do **not** need the source files. They validate each chapter's `source` metadata instead: the path format (`source_materials/chapter-XX/<file>.<pdf|pptx|docx|...>`), the page count, and that every page reference falls within it. This is what runs on Vercel.
+- `npm run verify:sources` is an optional **local-only** check that the referenced files actually exist on your machine. Run it after adding a chapter. It fails if the private files are missing, so it is not part of the build.
 
 ## Accessibility and theming
 

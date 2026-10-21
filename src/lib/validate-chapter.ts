@@ -6,6 +6,23 @@ export const OPTIONS_PER_QUESTION = 4;
 export const MAX_CORRECT_AT_SAME_POSITION = 8;
 
 const CHAPTER_ID_PATTERN = /^chapter-\d{2}$/;
+/** Lecture-note formats accepted as chapter sources. */
+export const SOURCE_EXTENSIONS = ['pdf', 'ppt', 'pptx', 'doc', 'docx', 'md', 'txt'] as const;
+const SOURCE_FILE_PATTERN = new RegExp(`^[^/\\\\]+\\.(${SOURCE_EXTENSIONS.join('|')})$`, 'i');
+
+/**
+ * Checks the format of source.path only. The files themselves are private and are not
+ * committed (see .gitignore); `npm run verify:sources` checks they exist locally.
+ */
+function checkSourcePath(chapterId: string, path: string, errors: string[], at: (s: string) => string) {
+  const folder = `source_materials/${chapterId}/`;
+  if (!path.startsWith(folder)) {
+    errors.push(at(`source.path must be inside "${folder}".`));
+    return;
+  }
+  if (!SOURCE_FILE_PATTERN.test(path.slice(folder.length)))
+    errors.push(at(`source.path must name one file directly in "${folder}" with a ${SOURCE_EXTENSIONS.join('/')} extension.`));
+}
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const isBlank = (value: string | undefined): boolean => value === undefined || value.trim().length === 0;
@@ -73,6 +90,7 @@ export function validateChapter(chapter: Chapter): string[] {
   if (isBlank(chapter.title)) errors.push(at('title is empty.'));
   if (isBlank(chapter.description)) errors.push(at('description is empty.'));
   if (isBlank(chapter.source.path)) errors.push(at('source.path is empty.'));
+  else checkSourcePath(chapter.id, chapter.source.path, errors, at);
   if (!Number.isInteger(chapter.source.pageCount) || chapter.source.pageCount < 1)
     errors.push(at('source.pageCount must be a positive integer.'));
   if (chapter.learningObjectives.length === 0 || chapter.learningObjectives.some(isBlank))

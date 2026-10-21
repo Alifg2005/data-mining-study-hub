@@ -79,6 +79,15 @@ describe('validateChapter', () => {
     expect(validateChapter(makeChapter({ id: 'chapter-08' })).join()).toMatch(/must be "chapter-09"/);
   });
 
+  it('validates the source path format without requiring the file to exist', () => {
+    const at = (path: string) => validateChapter(makeChapter({ source: { path, pageCount: 3 } })).join();
+    expect(at('source_materials/chapter-09/Ch 9_Note.pdf')).toBe('');
+    expect(at('source_materials/chapter-08/notes.pdf')).toMatch(/must be inside "source_materials\/chapter-09\/"/);
+    expect(at('public/notes.pdf')).toMatch(/must be inside/);
+    expect(at('source_materials/chapter-09/../secret.pdf')).toMatch(/must name one file/);
+    expect(at('source_materials/chapter-09/notes.exe')).toMatch(/must name one file/);
+  });
+
   it('flags answer-position bias', () => {
     const questions = makeChapter().questions.map((q) => ({ ...q, correctOptionId: 'a' }));
     expect(validateChapter(makeChapter({ questions })).join()).toMatch(/vary answer positions/);

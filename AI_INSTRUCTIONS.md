@@ -51,7 +51,7 @@ src/
 ├── styles/index.css            # Design tokens (CSS variables) for both themes
 ├── App.tsx                     # Routes
 └── main.tsx
-source_materials/chapter-XX/    # Original lecture notes. NOT shipped with the site.
+source_materials/chapter-XX/    # Original lecture notes. PRIVATE: gitignored, never committed or shipped.
 ```
 
 Routes: `/`, `/chapters/:chapterId` (review), `/chapters/:chapterId/quiz`. All chapters share the same pages; the data decides what is shown.
@@ -106,7 +106,9 @@ That is all. The home page, routes, review page, and quiz pick the chapter up au
 Required values in the chapter file:
 
 - `id: 'chapter-XX'`, `number: N` (the validator enforces that they match).
-- `source: { path: 'source_materials/chapter-XX/<file>', pageCount: <real page count> }`. A test checks that the file exists.
+- `source: { path: 'source_materials/chapter-XX/<file>', pageCount: <real page count> }`. The validator checks the path format (inside `source_materials/chapter-XX/`, one file, extension pdf/ppt/pptx/doc/docx/md/txt) and that every page reference is within `pageCount`. It does **not** require the file to exist, because the notes are private and absent on GitHub and Vercel.
+
+**Source privacy:** `source_materials/` is gitignored. Never commit, upload, copy into `public/`, or otherwise expose the lecture notes. Never remove `/source_materials/` from `.gitignore`. Never make the public build depend on those files.
 - A header comment listing which topics are on which source page, as in the existing chapters.
 - Question ids `chXX-q01` … `chXX-q20`.
 
@@ -128,6 +130,8 @@ After adding or changing a chapter, do all of the following and fix any errors y
 10. Verify that the home page lists all chapters, existing chapters still open, navigation works, the theme toggle works, and quiz submission and results work. `npm test` covers these flows in jsdom. If a browser is available, also check `npm run preview` manually.
 
 `npm run check` runs lint, typecheck, tests, and the build in one command.
+
+Also run `npm run verify:sources` locally. It confirms that every chapter's source file exists in `source_materials/`. It is local-only (excluded from `npm test` and the build via `*.local.test.ts`), because the files are private and missing on Vercel.
 
 ---
 
@@ -171,4 +175,5 @@ npm test             # Vitest: engine, validation, chapter data, UI flows
 npm run build        # typecheck + content validation + production build to dist/
 npm run preview      # serve dist/ locally
 npm run check        # lint + typecheck + tests + build
+npm run verify:sources  # local only: private source notes exist in source_materials/
 ```

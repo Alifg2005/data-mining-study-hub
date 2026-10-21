@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { chapters, getChapter } from './index';
 import { OPTIONS_PER_QUESTION, QUESTIONS_PER_CHAPTER, validateChapter, validateChapterRegistry } from '../../lib/validate-chapter';
 
 /**
  * Content validation for every registered chapter. Runs in `npm run build`, so
  * malformed chapter data fails the build (and the Vercel deployment).
+ *
+ * The source PDFs are private and not committed, so these tests check source
+ * metadata only. `npm run verify:sources` checks that the files exist locally.
  */
 describe('chapter registry', () => {
   it('has no registry-level problems', () => {
@@ -38,8 +39,16 @@ describe.each(chapters.map((c) => [c.id, c] as const))('%s', (_id, chapter) => {
     }
   });
 
-  it('points at a source document that exists in the repository', () => {
-    expect(existsSync(resolve(process.cwd(), chapter.source.path))).toBe(true);
+  it('has well-formed source metadata', () => {
+    expect(chapter.source.path.startsWith(`source_materials/${chapter.id}/`)).toBe(true);
+    expect(chapter.source.path).toMatch(/^source_materials\/chapter-\d{2}\/[^/\\]+\.[a-z]+$/i);
+    expect(Number.isInteger(chapter.source.pageCount) && chapter.source.pageCount > 0).toBe(true);
+    const pages = [
+      ...chapter.reviewSections.flatMap((s) => (s.source ? [s.source.page] : [])),
+      ...chapter.questions.flatMap((q) => (q.sourceReference ? [q.sourceReference.page] : [])),
+    ];
+    expect(pages.length).toBeGreaterThan(0);
+    for (const page of pages) expect(page).toBeLessThanOrEqual(chapter.source.pageCount);
   });
 
   it('uses question ids prefixed with the chapter number', () => {
