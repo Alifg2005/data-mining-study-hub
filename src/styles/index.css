@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+
+/* Theme switching uses data-theme on <html>, set before paint by index.html. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Design tokens. Components use only these semantic colors (bg-surface, text-muted, ...),
+ * never raw palette values, so both themes stay consistent.
+ */
+:root {
+  color-scheme: light;
+  --bg: #f4f6f8;
+  --surface: #fcfdfd;
+  --surface-sunken: #eef1f4;
+  --surface-raised: #ffffff;
+  --border: #dde2e8;
+  --border-strong: #c3cbd4;
+  --text: #141a21;
+  --text-muted: #55606d;
+  --text-subtle: #6b7682;
+
+  --accent: #0d7469;
+  --accent-hover: #0a5f56;
+  --accent-contrast: #f4fbfa;
+  --accent-soft: #e2f1ee;
+  --accent-soft-text: #0a5c53;
+
+  --success: #17713d;
+  --success-soft: #e3f3e8;
+  --danger: #b0261c;
+  --danger-soft: #fbe9e7;
+  --warning: #8f5207;
+  --warning-soft: #fdf1dc;
+  --info-soft: #e8eef8;
+  --info: #2a4f8f;
+
+  --focus: #0d7469;
+  --shadow-color: 210 30% 20%;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0c1014;
+  --surface: #131920;
+  --surface-sunken: #0f1418;
+  --surface-raised: #1a2129;
+  --border: #252e38;
+  --border-strong: #36414d;
+  --text: #e7ebef;
+  --text-muted: #a0aab6;
+  --text-subtle: #8a95a2;
+
+  --accent: #3cc2b1;
+  --accent-hover: #5fd3c4;
+  --accent-contrast: #05201c;
+  --accent-soft: #10302c;
+  --accent-soft-text: #7fdccf;
+
+  --success: #5fcf8c;
+  --success-soft: #11291b;
+  --danger: #f08a7f;
+  --danger-soft: #331715;
+  --warning: #e9b45a;
+  --warning-soft: #2e2210;
+  --info-soft: #152238;
+  --info: #9dbaf0;
+
+  --focus: #5fd3c4;
+  --shadow-color: 210 40% 2%;
+}
+
+@theme inline {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-fg: var(--accent-soft-text);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 4px 16px -6px hsl(var(--shadow-color) / 0.1);
+  --shadow-pop: 0 2px 4px hsl(var(--shadow-color) / 0.08), 0 16px 40px -12px hsl(var(--shadow-color) / 0.25);
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--accent-soft-text);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+}
+
+@layer components {
+  /* Entrance used on page content; disabled for reduced motion. */
+  .enter {
+    animation: enter 320ms var(--ease-out-quart) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .enter {
+      animation: none;
+    }
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+dialog::backdrop {
+  background: hsl(210 30% 4% / 0.7);
+  backdrop-filter: blur(2px);
+}
